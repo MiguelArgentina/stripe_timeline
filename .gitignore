@@ -40,3 +40,12 @@
 .env
 .env*
 config/master.key
+
+# Local secrets
+.env
+.env*
+
+# Local secrets
+.env
+.env*
+config/master.key

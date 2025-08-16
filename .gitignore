@@ -35,3 +35,8 @@
 
 .env
 
+
+# Secrets
+.env
+.env*
+config/master.key

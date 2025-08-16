@@ -1,0 +1,11 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  tenant: one
+  fetch_fees: false
+  stripe_api_key: MyString
+
+two:
+  tenant: two
+  fetch_fees: false
+  stripe_api_key: MyString

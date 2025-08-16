@@ -1,0 +1,13 @@
+<li id="<%= dom_id(t) %>">
+  <strong><%= t.transaction_key %></strong>
+  <% if t.amount_integer && t.currency %> — <%= money_cents(t.amount_integer, t.currency) %><% end %>
+  <% if t.status %> — <%= status_chip(t.status) %><% end %>
+  <% if t.last_event_at_unix %>
+    — <time title="<%= Time.at(t.last_event_at_unix) %>"><%= time_ago_in_words(Time.at(t.last_event_at_unix)) %> ago</time>
+  <% end %>
+  <% if t.email.present? %> — <span class="chip muted"><%= t.email %></span><% end %>
+  <% if t.order_id.present? %> — <span class="chip muted">order <%= t.order_id %></span><% end %>
+  <% if t.last4.present? %> — <span class="chip muted">•••• <%= t.last4 %></span><% end %>
+  — <%= link_to "view", transaction_path(key: t.transaction_key), data: { turbo_frame: "details" } %>
+  — <%= link_to "view in full page", transaction_path(key: t.transaction_key), data: { turbo_frame: "_top" } %>
+</li>

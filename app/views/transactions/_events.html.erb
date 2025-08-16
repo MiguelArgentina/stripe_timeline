@@ -1,0 +1,67 @@
+<%# This partial now expects locals: events:, key: (and optional verbose:) %>
+<% events  = Array(local_assigns[:events]) %>
+<% verbose = !!local_assigns[:verbose] %>
+
+<%# Hide noisy updates unless verbose %>
+<% filtered = verbose ? events : events.reject { |e| e.type_name.end_with?(".updated") } %>
+
+
+<%# 2) Grouping (keep your existing groups, just use 'filtered' instead of 'events') %>
+<% groups = filtered.group_by do |e|
+  tn = e.type_name
+  case
+  when tn.start_with?("charge.dispute.")   then "Dispute"
+  when tn.start_with?("refund.")           then "Refund"
+  when tn.start_with?("payment_intent.")   then "Payment"
+  when tn.start_with?("charge.")           then "Charge"
+  when tn.start_with?("invoice.")          then "Invoice"
+  when tn.start_with?("checkout.session")  then "Checkout"
+  else "Other"
+  end
+end %>
+
+<% timings = TransactionTimings.new(filtered) %>
+<div style="display:flex; gap:.5rem; margin:.25rem 0;">
+  <span class="chip muted">PI → Charge: <strong><%= timings.human(timings.pi_to_charge_ms) %></strong></span>
+  <span class="chip refund">Charge → Refund: <strong><%= timings.human(timings.charge_to_refund_ms) %></strong></span>
+  <span class="chip warning">Dispute → Closed: <strong><%= timings.human(timings.dispute_to_close_ms) %></strong></span>
+</div>
+
+
+<% groups.each do |group_name, group_events| %>
+  <h3><%= group_name %> (<%= group_events.size %>)</h3>
+  <ul>
+    <% group_events.each do |e| %>
+      <% o = e.payload["data"]["object"] || {} %>
+      <li>
+        <code><%= Time.at(e.created_at_unix) %></code> — <%= e.type_name %>
+
+        <%# BASIC success/refund chips %>
+        <% if e.type_name == "payment_intent.succeeded" || e.type_name == "charge.succeeded" %>
+          — <span class="chip success">succeeded</span>
+        <% elsif e.type_name.start_with?("refund.") || e.type_name == "charge.refunded" %>
+          — <span class="chip refund">refund</span>
+        <% end %>
+
+        <%# your existing amount label %>
+        <% if (lbl = event_amount_label(e)).present? %>
+          — <em><%= lbl %></em>
+        <% end %>
+
+        <%# dispute due date chip you added earlier %>
+        <% o = e.payload["data"]["object"] || {} %>
+        <% if o["object"] == "dispute" && (due = o.dig("evidence_details","due_by")) %>
+          — <span class="chip warning">evidence due <%= time_ago_in_words(Time.at(due)) %> from now</span>
+        <% end %>
+
+        <%# optional dashboard link %>
+        <% if (dash_id = primary_dashboard_id_for_event(e)).present? %>
+          — <%= link_to "dashboard", stripe_url_for(dash_id, livemode: e.livemode), target: "_blank", rel: "noopener" %>
+        <% end %>
+
+        ( <a href="#" onclick='alert(JSON.stringify(<%= raw e.payload.to_json %>, null, 2))'>payload</a> )
+      </li>
+
+  <% end %>
+  </ul>
+<% end %>

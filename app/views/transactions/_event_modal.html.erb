@@ -1,0 +1,47 @@
+<div class="modal fade" id="eventModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="eventModalTitle">event</h5>
+        <div class="ms-auto d-flex gap-2">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-role="copy-json">Copy JSON</button>
+          <button type="button" class="btn btn-primary btn-sm" data-role="export-csv">Export CSV</button>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-lg-6">
+            <div class="border rounded p-3">
+              <h6 class="mb-3">Summary</h6>
+              <dl class="row small mb-0">
+                <dt class="col-4">Type</dt><dd class="col-8" id="evType"></dd>
+                <dt class="col-4">Created at</dt><dd class="col-8" id="evTime"></dd>
+                <dt class="col-4">Livemode</dt><dd class="col-8" id="evLive"></dd>
+                <dt class="col-4">Account</dt><dd class="col-8" id="evAcct"></dd>
+                <dt class="col-4">Source</dt><dd class="col-8" id="evSource"></dd>
+                <dt class="col-4">Object</dt><dd class="col-8" id="evObj"></dd>
+                <dt class="col-4">Object ID</dt><dd class="col-8" id="evObjId"></dd>
+                <dt class="col-4">Amount</dt><dd class="col-8" id="evAmount"></dd>
+                <dt class="col-4">Status</dt><dd class="col-8" id="evStatus"></dd>
+                <dt class="col-4">Reason</dt><dd class="col-8" id="evReason"></dd>
+              </dl>
+            </div>
+          </div>
+
+          <div class="col-lg-6">
+            <div class="border rounded p-3">
+              <h6 class="mb-3">Raw JSON</h6>
+              <pre class="small mb-0" id="evJson" style="white-space:pre-wrap"></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>

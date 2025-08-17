@@ -1,43 +1,67 @@
-<li id="<%= dom_id(t) %>"
-    class="list-group-item d-flex justify-content-between align-items-start list-group-item-action">
-  <div class="me-3">
-    <div class="fw-semibold">
-      <%= link_to t.transaction_key,
-                  transaction_path(key: t.transaction_key),
-                  data: { turbo_frame: "details" },
-                  class: "link-underline link-underline-opacity-0 mono" %>
+<!-- app/views/transactions/_summary_row.html.erb -->
+<li id="<%= dom_id(t) %>" class="list-unstyled mb-2">
+  <% label, chip_class, dot_class = tx_summary_badge(t) %>
+
+  <div class="card tx-card position-relative">
+    <!-- single status dot -->
+    <span class="tx-status-dot <%= dot_class %>"></span>
+
+    <div class="card-body py-3">
+      <div class="d-flex align-items-start justify-content-between">
+        <div class="pe-2 flex-grow-1">
+          <!-- key -->
+          <div class="fw-semibold mono text-truncate tx-key"><%= t.transaction_key %></div>
+
+          <!-- single meta row -->
+          <div class="tx-meta small text-muted d-flex flex-wrap gap-2 mt-1">
+            <% if t.amount_integer && t.currency %>
+              <span class="badge text-bg-light border"><%= money_cents(t.amount_integer, t.currency) %></span>
+            <% end %>
+
+            <% if t.last4.present? %>
+              <span class="badge text-bg-light border">•••• <%= t.last4 %></span>
+            <% end %>
+
+            <% if t.email.present? %>
+              <span class="badge text-bg-light border"><%= t.email %></span>
+            <% end %>
+
+            <% if t.order_id.present? %>
+              <span class="badge text-bg-light border">order <%= t.order_id %></span>
+            <% end %>
+
+            <% if t.last_event_at_unix %>
+              <span class="badge text-bg-light border">
+                <time title="<%= Time.at(t.last_event_at_unix) %>">
+                  <%= time_ago_in_words(Time.at(t.last_event_at_unix)) %> ago
+                </time>
+              </span>
+            <% end %>
+
+            <!-- the one-and-only status chip -->
+            <span class="chip <%= chip_class %>"><%= label %></span>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="tx-actions d-flex flex-column gap-1 align-items-end ms-2">
+          <button type="button"
+                  class="btn btn-sm btn-outline-secondary"
+                  data-copy="<%= t.transaction_key %>">copy</button>
+
+          <%= link_to "full page",
+                      transaction_path(key: t.transaction_key),
+                      class: "btn btn-sm btn-outline-secondary",
+                      data: { turbo_frame: "_top" } %>
+        </div>
+      </div>
     </div>
 
-    <div class="small text-muted">
-      <% if t.last_event_at_unix %>
-        <time title="<%= Time.at(t.last_event_at_unix) %>">
-          — <%= time_ago_in_words(Time.at(t.last_event_at_unix)) %> ago
-        </time>
-      <% end %>
-      <% if t.last4.present? %> — •••• <%= t.last4 %><% end %>
-      <% if t.email.present? %> — <%= t.email %><% end %>
-      <% if t.order_id.present? %> — order <%= t.order_id %><% end %>
-    </div>
-  </div>
-
-  <div class="text-end">
-    <div class="d-flex gap-2 align-items-center justify-content-end">
-      <% if t.amount_integer && t.currency %>
-        <span class="badge text-bg-secondary">
-          <%= money_cents(t.amount_integer, t.currency) %>
-        </span>
-      <% end %>
-
-      <% if t.status %>
-        <%= status_chip(t.status, bootstrap: true) %>
-      <% end %>
-    </div>
-
-    <div class="mt-2 d-flex gap-2 justify-content-end">
-      <%= link_to "view", transaction_path(key: t.transaction_key),
-                  data: { turbo_frame: "details" }, class: "btn btn-sm btn-outline-secondary" %>
-      <%= link_to "full page", transaction_path(key: t.transaction_key),
-                  data: { turbo_frame: "_top" }, class: "btn btn-sm btn-outline-secondary" %>
-    </div>
+    <!-- the whole card opens timeline in the details frame -->
+    <%= link_to "",
+                transaction_path(key: t.transaction_key),
+                class: "stretched-link",
+                data: { turbo_frame: "details" },
+                "aria-label": "Open timeline" %>
   </div>
 </li>

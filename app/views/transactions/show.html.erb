@@ -1,36 +1,33 @@
 <%= turbo_frame_tag "details" do %>
-  <h5 class="mb-3">
-    Timeline <span class="mono text-primary"><%= @key %></span>
-  </h5>
-  <%= turbo_stream_from "tx:#{Current.tenant.id}:#{@key}" %>
+  <div class="card shadow-sm border-0">
+    <div class="card-header bg-body">
+      <h5 class="mb-0">Timeline <span class="mono"><%= @key %></span></h5>
+      <%= turbo_stream_from "tx:#{Current.tenant.id}:#{@key}" %>
+    </div>
 
-  <div id="timeline">
-    <%= render partial: "transactions/events",
-               locals: { events: @events, key: @key, verbose: params[:verbose].present? } %>
-  </div>
+    <div id="timeline" class="card-body">
+      <%= render partial: "transactions/events", locals: { events: @events, key: @key, verbose: params[:verbose].present? } %>
 
-  <div class="d-flex gap-2 mt-3">
-    <%= link_to "Clear tx details", clear_tx_details_path, data: { turbo_frame: "details" },
-                class: "btn btn-outline-secondary" %>
+      <div class="d-flex gap-2">
+        <%= link_to "Clear tx details", clear_tx_details_path, data: { turbo_frame: "details" }, class: "btn btn-outline-secondary" %>
+        <% if params[:verbose].present? %>
+          <%= link_to "Show less", transaction_path(key: @key), data: { turbo_frame: "details" }, class: "btn btn-outline-secondary" %>
+        <% else %>
+          <%= link_to "Show all events", transaction_path(key: @key, verbose: 1), data: { turbo_frame: "details" }, class: "btn btn-outline-secondary" %>
+        <% end %>
+        <%= link_to "Export CSV", export_transaction_path(key: @key), data: { turbo: false }, class: "btn btn-primary ms-auto" %>
+      </div>
+    </div>
 
-    <% if params[:verbose].present? %>
-      <%= link_to "Hide internal updates", transaction_path(key: @key),
-                  data: { turbo_frame: "details" }, class: "btn btn-outline-secondary" %>
-    <% else %>
-      <%= link_to "Show all events", transaction_path(key: @key, verbose: 1),
-                  data: { turbo_frame: "details" }, class: "btn btn-outline-secondary" %>
-    <% end %>
-
-    <%= link_to "Export CSV", export_transaction_path(key: @key),
-                data: { turbo: false }, class: "btn btn-primary ms-auto" %>
+    <% totals = TransactionTotals.new(@events) %>
+    <div class="card-footer bg-body-tertiary small">
+      <div class="d-flex flex-wrap gap-3">
+        <span>Gross: <strong><%= money_cents(totals.gross,   @events.first&.payload.dig("data","object","currency") || "usd") %></strong></span>
+        <span>Refunded: <strong>-<%= money_cents(totals.refunded, "usd") %></strong></span>
+        <span>Held (dispute): <strong>-<%= money_cents(totals.held, "usd") %></strong></span>
+        <span>Reinstated: <strong>+<%= money_cents(totals.reinstated, "usd") %></strong></span>
+        <span>Net: <strong><%= money_cents(totals.net, "usd") %></strong></span>
+      </div>
+    </div>
   </div>
 <% end %>
-
-<% totals = TransactionTotals.new(@events) %>
-<div class="d-flex flex-wrap gap-3 mt-3 small">
-  <span>Gross: <strong><%= money_cents(totals.gross,   @events.first&.payload.dig("data","object","currency") || "usd") %></strong></span>
-  <span>Refunded: <strong>-<%= money_cents(totals.refunded, "usd") %></strong></span>
-  <span>Held (dispute): <strong>-<%= money_cents(totals.held, "usd") %></strong></span>
-  <span>Reinstated: <strong>+<%= money_cents(totals.reinstated, "usd") %></strong></span>
-  <span>Net: <strong><%= money_cents(totals.net, "usd") %></strong></span>
-</div>

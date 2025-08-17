@@ -1,73 +1,131 @@
+<%# app/views/transactions/_events.html.erb %>
+<%# Locals: events:, key:, verbose: (optional) %>
+<% require "base64" %>
+
 <% events  = Array(local_assigns[:events]) %>
 <% verbose = !!local_assigns[:verbose] %>
+
+<%# 1) Filter out noisy updates unless verbose %>
 <% filtered = verbose ? events : events.reject { |e| e.type_name.end_with?(".updated") } %>
 
+<%# 2) Timeline KPIs (always one row, never duplicated) %>
+<% timings = TransactionTimings.new(filtered) %>
+<div class="d-flex flex-wrap gap-2 my-2">
+  <span class="badge text-bg-secondary-subtle border">PI → Charge: <strong><%= timings.human(timings.pi_to_charge_ms) %></strong></span>
+  <span class="badge text-bg-info-subtle border">Charge → Refund: <strong><%= timings.human(timings.charge_to_refund_ms) %></strong></span>
+  <span class="badge text-bg-warning-subtle border">Dispute → Closed: <strong><%= timings.human(timings.dispute_to_close_ms) %></strong></span>
+</div>
+
+<%# 3) ONE-TIME META STRIP — de-duped with .uniq.first %>
+<%
+  charge_id = filtered.map { |e|
+    o = e.payload["data"]["object"] || {}
+    o["object"] == "charge" ? o["id"] : (o["charge"] || o["latest_charge"])
+  }.compact.uniq.first
+
+  last4 = filtered.map { |e|
+    o = e.payload["data"]["object"] || {}
+    o.dig("payment_method_details","card","last4") ||
+      o.dig("charges","data",0,"payment_method_details","card","last4")
+  }.compact.uniq.first
+
+  display_name = filtered.map { |e|
+    o = e.payload["data"]["object"] || {}
+    o.dig("shipping","name") || o.dig("billing_details","name")
+  }.compact.uniq.first
+
+  refund_reason = filtered.map { |e|
+    o = e.payload["data"]["object"] || {}
+    o["object"] == "refund" ? (o["reason"] || o["failure_reason"]) : nil
+  }.compact.uniq.first
+
+  dispute_reason = filtered.map { |e|
+    o = e.payload["data"]["object"] || {}
+    o["object"] == "dispute" ? (o.dig("evidence","reason") || o["reason"]) : nil
+  }.compact.uniq.first
+%>
+
+<% if charge_id || last4 || display_name || refund_reason || dispute_reason %>
+  <div class="mb-2 d-flex flex-wrap align-items-center gap-2">
+    <% if charge_id %>
+      <span class="badge text-bg-light border mono">CHARGE <%= charge_id %></span>
+    <% end %>
+    <% if last4 %>
+      <span class="badge text-bg-light border">•••• <%= last4 %></span>
+    <% end %>
+    <% if display_name %>
+      <span class="badge text-bg-light border"><%= display_name %></span>
+    <% end %>
+    <% if refund_reason %>
+      <span class="badge text-bg-danger-subtle border">refund: <%= refund_reason %></span>
+    <% end %>
+    <% if dispute_reason %>
+      <span class="badge text-bg-warning-subtle border">dispute: <%= dispute_reason %></span>
+    <% end %>
+  </div>
+<% end %>
+
+<%# 4) Groups %>
 <% groups = filtered.group_by do |e|
   tn = e.type_name
   case
-  when tn.start_with?("charge.dispute.")   then "Dispute"
-  when tn.start_with?("refund.")           then "Refund"
-  when tn.start_with?("payment_intent.")   then "Payment"
-  when tn.start_with?("charge.")           then "Charge"
-  when tn.start_with?("invoice.")          then "Invoice"
-  when tn.start_with?("checkout.session")  then "Checkout"
-  else "Other"
+  when tn.start_with?("charge.dispute.")   then "CHARGE DISPUTE"
+  when tn.start_with?("refund.")           then "REFUND"
+  when tn.start_with?("payment_intent.")   then "PAYMENT"
+  when tn.start_with?("charge.")           then "CHARGE"
+  when tn.start_with?("invoice.")          then "INVOICE"
+  when tn.start_with?("checkout.session")  then "CHECKOUT"
+  else "OTHER"
   end
 end %>
 
-<% timings = TransactionTimings.new(filtered) %>
-<div class="d-flex flex-wrap gap-2 mb-3">
-  <span class="badge rounded-pill text-bg-secondary">PI → Charge: <strong><%= timings.human(timings.pi_to_charge_ms) %></strong></span>
-  <span class="badge rounded-pill text-bg-info">Charge → Refund: <strong><%= timings.human(timings.charge_to_refund_ms) %></strong></span>
-  <span class="badge rounded-pill text-bg-warning">Dispute → Closed: <strong><%= timings.human(timings.dispute_to_close_ms) %></strong></span>
-</div>
-
+<%# 5) Event list (clickable rows; modal launcher) %>
 <% groups.each do |group_name, group_events| %>
-  <h6 class="text-uppercase text-muted mt-4 mb-2"><%= group_name %> (<%= group_events.size %>)</h6>
-
-  <div class="timeline list-group list-group-flush">
+  <h6 class="mt-3 mb-2 text-uppercase text-muted"><%= group_name %> (<%= group_events.size %>)</h6>
+  <ul class="list-unstyled timeline">
     <% group_events.each do |e| %>
       <% o = e.payload["data"]["object"] || {} %>
-
-      <div class="list-group-item timeline-item">
-        <div class="d-flex justify-content-between align-items-center">
-          <code class="small text-muted"><%= Time.at(e.created_at_unix) %></code>
-
-          <%# status-ish chips for quick scan %>
-          <% if e.type_name == "payment_intent.succeeded" || e.type_name == "charge.succeeded" %>
-            <span class="badge rounded-pill text-bg-success">succeeded</span>
-          <% elsif e.type_name.start_with?("refund.") || e.type_name == "charge.refunded" %>
-            <span class="badge rounded-pill text-bg-info">refund</span>
-          <% elsif e.type_name.start_with?("charge.dispute.") %>
-            <span class="badge rounded-pill text-bg-warning">dispute</span>
-          <% end %>
-        </div>
-
-        <div class="mt-1">
-          <span class="mono"><%= e.type_name %></span>
-
-          <% if (lbl = event_amount_label(e)).present? %>
-            — <em><%= lbl %></em>
-          <% end %>
-
-          <% if o["object"] == "dispute" && (due = o.dig("evidence_details","due_by")) %>
-            — <span class="badge text-bg-warning">evidence due <%= time_ago_in_words(Time.at(due)) %> from now</span>
-          <% end %>
-        </div>
-
-        <div class="mt-2 d-flex gap-2">
-          <% if (dash_id = primary_dashboard_id_for_event(e)).present? %>
-            <%= link_to "dashboard",
-                        stripe_url_for(dash_id, livemode: e.livemode),
-                        target: "_blank", rel: "noopener",
-                        class: "btn btn-sm btn-outline-secondary" %>
-          <% end %>
-          <button type="button" class="btn btn-sm btn-outline-secondary"
-                  onclick='alert(JSON.stringify(<%= raw e.payload.to_json %>, null, 2))'>
-            payload
-          </button>
-        </div>
-      </div>
+      <li class="timeline-item mb-2">
+        <button type="button"
+                class="btn w-100 text-start p-0 border-0 bg-transparent event-open"
+                data-bs-toggle="modal"
+                data-bs-target="#eventModal"
+                data-event-b64="<%= Base64.strict_encode64(e.payload.to_json) %>"
+                data-type="<%= e.type_name %>"
+                data-time="<%= e.created_at_unix %>"
+                data-livemode="<%= e.livemode %>"
+                data-account="<%= e.account %>"
+                data-source="<%= e.source %>">
+          <div class="d-flex align-items-center justify-content-between">
+            <div class="small text-muted">
+              <code><%= Time.at(e.created_at_unix) %></code>
+              — <span class="mono"><%= e.type_name %></span>
+              <% if e.type_name == "payment_intent.succeeded" || e.type_name == "charge.succeeded" %>
+                <span class="ms-2 badge text-bg-success">succeeded</span>
+              <% elsif e.type_name.start_with?("refund.") || e.type_name == "charge.refunded" %>
+                <span class="ms-2 badge text-bg-danger">refund</span>
+              <% end %>
+              <% if (lbl = event_amount_label(e)).present? %>
+                — <em><%= lbl %></em>
+              <% end %>
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+              <% if (dash_id = primary_dashboard_id_for_event(e)).present? %>
+                <%= link_to "dashboard",
+                            stripe_url_for(dash_id, livemode: e.livemode),
+                            class: "btn btn-sm btn-outline-secondary",
+                            target: "_blank", rel: "noopener",
+                            onclick: "event.stopPropagation();" %>
+              <% end %>
+              <button type="button"
+                      class="btn btn-sm btn-outline-secondary"
+                      onclick='event.stopPropagation(); alert(JSON.stringify(<%= raw e.payload.to_json %>, null, 2))'>
+                payload
+              </button>
+            </div>
+          </div>
+        </button>
+      </li>
     <% end %>
-  </div>
+  </ul>
 <% end %>

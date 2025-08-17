@@ -1,37 +1,224 @@
-/* Brand accent similar to Stripe */
+/* ================================
+   Brand / base
+=================================== */
 :root {
     --brand: #635bff;
+    --brand-ink: #1a1d2d;
 }
 a { color: var(--brand); }
-.btn-primary {
-    background-color: var(--brand);
-    border-color: var(--brand);
-}
+.btn-primary { background-color: var(--brand); border-color: var(--brand); }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
 
-/* Timeline rail + dots */
-.timeline { position: relative; }
-.timeline .timeline-item { position: relative; padding-left: 1.25rem; }
-.timeline .timeline-item::before {
-    content: "";
-    position: absolute;
-    left: 0.5rem;
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    background: var(--bs-border-color);
+/* ================================
+   KPI pills
+=================================== */
+.kpi-pill{
+    display:inline-flex; align-items:center; gap:.35rem;
+    padding:.35rem .6rem; border-radius:999px; font-weight:500;
 }
-.timeline .timeline-item::after {
-    content: "";
-    position: absolute;
-    left: 0.375rem;
-    top: .8rem;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--brand);
+.kpi-pill strong{ font-variant-numeric: tabular-nums; }
+
+/* ================================
+   Sticky left column (index list)
+=================================== */
+.sticky-col{ position:sticky; top:1rem; max-height:calc(100vh - 6rem); overflow:auto; }
+
+/* ================================
+   Timeline
+=================================== */
+.timeline{ position:relative; }
+.timeline .timeline-item{ position:relative; padding-left:1.25rem; }
+.timeline .timeline-item::before{
+    content:""; position:absolute; left:.55rem; top:0; bottom:0; width:2px; background:var(--bs-border-color);
+}
+.timeline .timeline-item::after{
+    content:""; position:absolute; left:.4rem; top:.95rem; width:8px; height:8px; border-radius:50%; background:var(--brand);
 }
 
-/* Hover state for selectable list items */
-.list-group-item-action { cursor: pointer; }
-.list-group-item-action:hover { background: var(--bs-secondary-bg); }
+/* ================================
+   Lists / chips / utilities
+=================================== */
+.list-group-item-action{ cursor:pointer; }
+.list-group-item-action:hover{ background:var(--bs-secondary-bg); }
+.list-group-item-action.active{
+    background:linear-gradient(90deg, rgba(99,91,255,.08), transparent);
+    color:inherit;
+}
+
+.id-chip{
+    padding:.15rem .35rem; border-radius:.5rem;
+    background:var(--bs-secondary-bg); border:1px solid var(--bs-border-color);
+}
+
+.card{ border-radius:14px; }              /* gentle radius for all cards */
+.small code{ font-size:.85em; }
+
+/* ================================
+   Summary card (tx-card)
+   – comfy padding, no clipping, stripe-ish glow
+=================================== */
+.card.tx-card{
+    border-radius:.75rem;
+    overflow:visible;                        /* prevents corner/dot clipping */
+    background-clip:padding-box;
+    box-shadow:
+            0 6px 24px rgba(99,91,255,.14),
+            0 1px 3px rgba(16,24,40,.06) !important;
+    transition: transform .12s ease, box-shadow .12s ease;
+}
+.card.tx-card:hover{
+    transform:translateY(-2px);
+    box-shadow:
+            0 12px 36px rgba(99,91,255,.24),
+            0 4px 12px rgba(16,24,40,.12) !important;
+}
+/* Dark theme: stronger glow for contrast */
+[data-bs-theme="dark"] .card.tx-card{ box-shadow: 0 6px 28px rgba(99,91,255,.22) !important; }
+[data-bs-theme="dark"] .card.tx-card:hover{ box-shadow: 0 14px 40px rgba(99,91,255,.34) !important; }
+
+/* Comfy body spacing + tiny type polish */
+.card.tx-card .card-body{ padding:.85rem 1rem; }
+.tx-card .mono{ letter-spacing:.1px; }
+
+/* Inline metadata + small action spacing */
+.tx-meta{ display:flex; flex-wrap:wrap; gap:.4rem .5rem; margin-top:.35rem; }
+.tx-actions .btn{ margin-left:.25rem; }
+.tx-meta > * { margin-right: 0; }
+
+/* ================================
+   Status dot (supports old/new class names)
+=================================== */
+.tx-status-dot,
+.status-dot{
+    position:absolute; top:.55rem; right:.55rem;
+    width:10px; height:10px; border-radius:50%;
+    box-shadow:0 0 0 3px var(--bs-body-bg);   /* halo ring so it “floats” */
+}
+.tx-status-success   { background: var(--bs-success);   }  /* succeeded */
+.tx-status-warning   { background: var(--bs-warning);   }  /* disputes/pending */
+.tx-status-danger    { background: var(--bs-danger);    }  /* failed/refunded */
+.tx-status-secondary { background: var(--bs-secondary); }  /* default/unknown */
+
+/* ================================
+   Event buttons / mini action cluster
+=================================== */
+button.event-open{ border-radius:.5rem; }
+button.event-open:hover{ background:var(--bs-secondary-bg); }
+.mini-actions .btn{
+    --bs-btn-padding-y:.2rem; --bs-btn-padding-x:.45rem; --bs-btn-font-size:.75rem;
+}
+
+[data-tx-card]{ cursor: pointer; }
+[data-tx-card] .btn, [data-tx-card] a { cursor: default; } /* keep buttons normal */
+
+/* Overlay link covers the card; action buttons sit above it */
+.card.tx-card { position: relative; }
+.card.tx-card .stretched-link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+}
+.card.tx-card .tx-actions,
+.card.tx-card .tx-meta {
+    position: relative;
+    z-index: 10; /* buttons/links remain clickable */
+}
+
+/* keep list items uniform and inside the column */
+.tx-list .list-group-item { background: transparent; }
+.tx-list .list-group-item + .list-group-item { margin-top: .5rem; }
+.tx-list .card.tx-card { width: 100%; }          /* cards never overflow the list column */
+.tx-card .stretched-link { cursor: pointer; }     /* whole card feels clickable */
+
+/* --- Refund palette + status dots --------------------------------- */
+
+/* Light mint for partial refunds (green-ish, accessible) */
+.badge-mint {
+    --_bg: #D1FAE5;   /* mint-100 */
+    --_fg: #065F46;   /* emerald-900 for contrast */
+    color: var(--_fg) !important;
+    background-color: var(--_bg) !important;
+    border: 1px solid #A7F3D0 !important; /* mint-200 */
+}
+
+/* Dots (use Bootstrap semantic variables where possible) */
+.tx-status-success  { background: var(--bs-success); }
+.tx-status-warning  { background: var(--bs-warning); }
+.tx-status-danger   { background: var(--bs-danger);  }
+.tx-status-secondary{ background: var(--bs-secondary); }
+
+/* partial = lighter green tone */
+.tx-status-partial  { background: #86EFAC; } /* mint-300 */
+
+/* ===== CHIP + DOT PALETTE ===== */
+:root{
+    /* Success */
+    --chip-success-bg:   #ecfdf3;
+    --chip-success-text: #067647;
+    --chip-success-bd:   #a6f4c5;
+
+    /* Partial refund (green-ish but distinct from success) */
+    --chip-refund-partial-bg:   #eafaf3;  /* mint */
+    --chip-refund-partial-text: #11845b;
+    --chip-refund-partial-bd:   #b7f0d2;
+
+    /* Full refund (lighter red than a dispute) */
+    --chip-refund-full-bg:   #fee2e2;   /* rose-100 */
+    --chip-refund-full-text: #b42318;   /* deeper text */
+    --chip-refund-full-bd:   #fecaca;
+
+    /* Dispute / chargeback (stronger red) */
+    --chip-dispute-bg:   #fde4e2;   /* a bit stronger */
+    --chip-dispute-text: #b42318;
+    --chip-dispute-bd:   #f9b4ae;
+
+    /* Neutral */
+    --chip-neutral-bg:   var(--bs-secondary-bg);
+    --chip-neutral-text: var(--bs-body-color);
+    --chip-neutral-bd:   var(--bs-border-color);
+}
+
+/* Base chip */
+.chip{
+    display:inline-flex;align-items:center;gap:.35rem;
+    padding:.25rem .55rem;border-radius:999px;font-weight:600;
+    line-height:1; border:1px solid transparent; font-size:.8rem;
+}
+
+/* Per-kind chips */
+.chip-success{
+    background:var(--chip-success-bg); color:var(--chip-success-text);
+    border-color:var(--chip-success-bd);
+}
+.chip-refund-partial{
+    background:#ccfbf1;      /* teal-100 */
+    color:#0f766e;           /* teal-700 */
+    border-color:#99f6e4;    /* teal-200 */
+}
+.chip-refund-full{
+    background:var(--chip-refund-full-bg); color:var(--chip-refund-full-text);
+    border-color:var(--chip-refund-full-bd);
+}
+.chip-dispute{
+    background:var(--chip-dispute-bg); color:var(--chip-dispute-text);
+    border-color:var(--chip-dispute-bd);
+}
+.chip-neutral{
+    background:var(--chip-neutral-bg); color:var(--chip-neutral-text);
+    border-color:var(--chip-neutral-bd);
+}
+
+/* Status dot colors to match chips */
+.tx-status-success       { background: #31915a; }  /* green */
+.tx-status-refund-partial{ background: rgba(52, 143, 141, 0.72);      /* teal-600 */}
+.tx-status-refund-full   { background: #d16855; }  /* light red (softer than dispute) */
+.tx-status-dispute       { background:#d92d20; }  /* strong red */
+.tx-status-secondary     { background:var(--bs-secondary-color); }
+
+/* keep halo ring from your earlier CSS */
+.tx-status-dot{
+    position:absolute; top:.55rem; right:.55rem;
+    width:9px; height:9px; border-radius:50%;
+    box-shadow:0 0 0 3px var(--bs-body-bg);
+}

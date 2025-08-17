@@ -2,18 +2,22 @@
 class StripeObject < ApplicationRecord
   belongs_to :tenant
 
-  validates :tenant, :object_type, :object_id, presence: true
+  # NOTE: ensure you have a UNIQUE index named :uniq_object_snapshot
+  # Ideally on [:tenant_id, :object_type, :object_id] (migration below).
 
-  # NOTE: now accepts tenant:
-  def self.upsert_snapshot!(tenant:, object_type:, object_id:, account:, payload:, last_event_id:)
-    obj = find_or_initialize_by(tenant: tenant, object_type: object_type, object_id: object_id)
-    obj.assign_attributes(
-      account:       account,
+  def self.upsert_snapshot!(tenant:, object_type:, object_id:, payload:, event_id:, account: nil)
+    data = {
+      tenant_id:     tenant.id,
+      object_type:   object_type,
+      object_id:     object_id,
+      account:       account.to_s,
       current:       payload,
-      last_event_id: last_event_id,
-      tenant:        tenant
-    )
-    obj.save!
-    obj
+      last_event_id: event_id,
+      updated_at:    Time.current,
+      created_at:    Time.current
+    }
+
+    # Atomic: INSERT … ON CONFLICT DO UPDATE
+    upsert(data, unique_by: :uniq_object_snapshot)
   end
 end

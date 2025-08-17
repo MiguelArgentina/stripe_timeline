@@ -1,0 +1,40 @@
+<!-- app/views/registrations/new.html.erb -->
+<div class="container my-5" style="max-width:520px;">
+  <h1 class="h3 mb-3">Create your account</h1>
+
+  <% if alert.present? %>
+    <div class="alert alert-danger"><%= alert %></div>
+  <% end %>
+
+  <%= form_with url: registration_path, method: :post, local: true, data: { turbo: false } do %>
+    <div class="mb-3">
+      <label class="form-label">Company / Team name</label>
+      <input name="company" class="form-control" placeholder="Acme Inc">
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Choose your subdomain</label>
+      <div class="input-group">
+        <input name="subdomain" class="form-control" placeholder="acme">
+        <span class="input-group-text">.lvh.me</span>
+      </div>
+      <div class="form-text">You can add a custom domain later.</div>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Work email</label>
+      <input type="email" name="email" class="form-control" autocomplete="email">
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Password</label>
+      <input type="password" name="password" class="form-control" autocomplete="new-password">
+    </div>
+
+    <button class="btn btn-primary w-100">Create account</button>
+  <% end %>
+
+  <div class="mt-3">
+    <%= link_to "Already have an account? Sign in", new_session_path %>
+  </div>
+</div>

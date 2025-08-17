@@ -14,10 +14,10 @@ class ProcessStripeEventJob < ApplicationJob
     StripeObject.upsert_snapshot!(
       object_type:   norm[:object_type],
       object_id:     norm[:object_id],
-      account:       norm[:account],
+      account:       norm[:account].to_s,
       payload:       evt.payload["data"]["object"],
-      last_event_id: evt.stripe_id,
-      tenant:        evt.tenant                       # ✅
+      event_id:      evt.stripe_id,
+      tenant:        evt.tenant
     )
 
     norm[:edges].each do |e|
@@ -25,7 +25,7 @@ class ProcessStripeEventJob < ApplicationJob
         from_type: e[:from_type], from_id: e[:from_id],
         to_type:   e[:to_type],   to_id:   e[:to_id],
         relation:  e[:relation],
-        account:   norm[:account],
+        account:   norm[:account].to_s,
         tenant:    evt.tenant                         # ✅
       )
     end

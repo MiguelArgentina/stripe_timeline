@@ -1,13 +1,11 @@
 # db/seeds.rb
-Tenant.destroy_all
+User.destroy_all   if defined?(User)
 Domain.destroy_all
+Tenant.destroy_all
 
-tenant = Tenant.find_or_create_by!(name: "Demo Merchant") do |t|
-  t.primary_domain = "localhost"
-  t.webhook_signing_secret = ENV.fetch("STRIPE_WEBHOOK_SECRET", "whsec_test")
+tenant = Tenant.create!(name: "Demo", primary_domain: "demo.lvh.me").tap do |t|
+  t.domains.create!(host: t.primary_domain)            # ✅ demo.lvh.me
+  t.users.create!(email: "owner@example.com", password: "password")
 end
 
-# Rails' request.host is just the host (no port)
-Domain.create!(host: "localhost", tenant:)
-Domain.create!(host: "127.0.0.1", tenant:) # nice to have
-puts "Seeded Tenant #{tenant.id} with domains localhost / 127.0.0.1"
+puts "Seeded Tenant #{tenant.id} on #{tenant.primary_domain}"

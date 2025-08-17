@@ -53,21 +53,36 @@ class TransactionSummary < ApplicationRecord
   end
 
   def self.upsert_from_event(evt)
-    payload = evt.payload["data"]["object"]
-    key     = evt.transaction_key || TransactionKey.compute(payload)
+    o   = evt.payload.dig("data", "object") || {}
+    key = evt.transaction_key || TransactionKey.compute(o)
     return unless key
 
     ts    = evt.created_at_unix.to_i
-    attrs = extract_attrs_from(payload, evt)
+    attrs = extract_attrs_from(o, evt)
 
-    # Lock the row so parallel jobs don't step on each other
+    # Use the derived, rankable status (refund/dispute precedence, etc.)
+    attrs[:status] = derive_status(evt, o)
+
     rec = TransactionSummary.lock.find_or_initialize_by(tenant: evt.tenant, transaction_key: key)
     rec.tenant ||= evt.tenant
     rec.events_count = rec.events_count.to_i + 1
 
-    # Only update “latest” fields if this event is as new or newer
-    if rec.new_record? || rec.last_event_at_unix.to_i <= ts
-      rec.assign_attributes(attrs.merge(last_event_at_unix: ts))
+    current_ts   = rec.last_event_at_unix.to_i
+    current_rank = rank(rec.status)
+    incoming_rank = rank(attrs[:status])
+
+    # Only advance when:
+    # - strictly newer event, OR
+    # - same timestamp but a better ranked status, OR
+    # - row has no status yet (brand new / backfill)
+    should_update =
+      rec.new_record? ||
+      ts > current_ts ||
+      (ts == current_ts && incoming_rank > current_rank) ||
+      rec.status.blank?
+
+    if should_update
+      rec.assign_attributes(attrs.merge(last_event_at_unix: [current_ts, ts].max))
     end
 
     rec.save!
@@ -88,8 +103,8 @@ class TransactionSummary < ApplicationRecord
     same_time    = e.created_at_unix.to_i == row.last_event_at_unix.to_i
     better_state = rank(new_status) > rank(old_status)
 
+    # same-timestamp downgrades are ignored; upgrades are allowed
     should_update = newer_time || (same_time && better_state) || row.status.blank?
-
     return row unless should_update
 
     email = o.dig("billing_details", "email") ||
@@ -101,7 +116,7 @@ class TransactionSummary < ApplicationRecord
       amount_integer:     amount_for_summary(new_status, o, row.amount_integer),
       currency:           (o["currency"] || row.currency),
       status:             new_status,
-      last_event_at_unix: e.created_at_unix.to_i,
+      last_event_at_unix: [row.last_event_at_unix.to_i, e.created_at_unix.to_i].max,
       email:              (email || row.email),
       last4:              (last4 || row.last4),
       livemode:           e.livemode
@@ -177,7 +192,7 @@ class TransactionSummary < ApplicationRecord
       latest_charge: latest_charge,
       email:       email,
       livemode:    evt.livemode,
-      account:     evt.account,
+      account:     evt.account.to_s,
       last4: last4 || "",
       order_id: meta_order || "",
       customer_id: customer || "",

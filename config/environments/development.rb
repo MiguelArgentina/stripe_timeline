@@ -73,6 +73,8 @@ Rails.application.configure do
   # Accept lvh.me and any subdomain like acme.lvh.me
   config.hosts << "lvh.me"
   config.hosts << /.*\.lvh\.me/
+  config.hosts << "localhost"
+  config.hosts << "127.0.0.1"
 
   # Turbo/ActionCable from subdomains (optional but handy if you use Cable)
   config.action_cable.allowed_request_origins = [

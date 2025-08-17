@@ -10,7 +10,7 @@ namespace :stripe do
         next unless rec.new_record?
         rec.assign_attributes(
           type_name: evt.type, api_version: evt.api_version,
-          account: (evt.respond_to?(:account) ? evt.account : nil),
+          account: (evt.respond_to?(:account) ? evt.account.to_s : ''),
           livemode: evt.livemode, created_at_unix: evt.created,
           payload: evt.to_hash, source: "backfill",
           transaction_key: TransactionKey.compute(evt)

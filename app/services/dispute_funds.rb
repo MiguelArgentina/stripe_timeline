@@ -33,7 +33,7 @@ class DisputeFunds
         stripe_id: stripe_id,
         type_name: type_name,
         api_version: evt.api_version,
-        account: evt.account,
+        account: evt.account.to_s,
         livemode: evt.livemode,
         created_at_unix: bt["created"] || evt.created_at_unix,
         source: "derived",
@@ -42,9 +42,13 @@ class DisputeFunds
       )
 
       # Optional relations
-      StripeRelation.link!(from_type: "dispute", from_id: dispute["id"],
-                           to_type: "balance_transaction", to_id: bt["id"],
-                           relation: "dispute↔balance_tx", account: evt.account) rescue nil
+      StripeRelation.link!(
+        from_type: "dispute", from_id: dispute["id"],
+        to_type: "balance_transaction", to_id: bt["id"],
+        relation: "dispute↔balance_tx",
+        account:  evt.account.to_s,
+        tenant:   evt.tenant
+      ) rescue nil
     end
   end
 

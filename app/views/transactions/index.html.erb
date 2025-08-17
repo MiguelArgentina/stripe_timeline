@@ -1,40 +1,65 @@
-<!-- app/views/transactions/index.html.erb -->
-<h1>Recent Transactions</h1>
-
+<h2 class="mb-3">Recent Transactions</h2>
 <%= turbo_stream_from "tx:index:#{Current.tenant.id}" %>
 
-<form method="get" style="display:flex; gap:.5rem; align-items:center; margin:.5rem 0;">
-  <select name="status">
-    <option value="">All</option>
-    <% %w[succeeded refunded disputed requires_payment_method].each do |st| %>
-      <option value="<%= st %>" <%= "selected" if params[:status]==st %>><%= st %></option>
-    <% end %>
-  </select>
-  <input type="date" name="from" value="<%= params[:from] %>">
-  <input type="date" name="to"   value="<%= params[:to] %>">
-  <button type="submit">Filter</button>
+<div class="card mb-3">
+  <div class="card-body">
+    <form method="get" class="row g-3 align-items-end">
+      <div class="col-12 col-md-3">
+        <label class="form-label">Status</label>
+        <select name="status" class="form-select">
+          <option value="">All</option>
+          <% %w[succeeded refunded disputed requires_payment_method].each do |st| %>
+            <option value="<%= st %>" <%= "selected" if params[:status]==st %>><%= st %></option>
+          <% end %>
+        </select>
+      </div>
 
-  <%# Export keeps current filters by passing the same query params %>
-  <%= link_to "Export visible (CSV)",
-              export_transactions_path(request.query_parameters),
-              data: { turbo: false }, class: "btn" %>
-</form>
+      <div class="col-6 col-md-3">
+        <label class="form-label">From</label>
+        <input type="date" name="from" value="<%= params[:from] %>" class="form-control">
+      </div>
 
-<%= turbo_frame_tag "details" do %>
-  <em>Select a transaction to view its timeline…</em>
-<% end %>
+      <div class="col-6 col-md-3">
+        <label class="form-label">To</label>
+        <input type="date" name="to" value="<%= params[:to] %>" class="form-control">
+      </div>
 
-<div class="summary-bar">
-  <span class="<%= chip_class_for(:gross) %>">Gross <strong><%= format_cents(@stats[:gross], @stats[:currency]) %></strong></span>
-  <span class="<%= chip_class_for(:refunds) %>">Refunds <strong><%= format_cents(@stats[:refunds], @stats[:currency]) %></strong></span>
-  <span class="<%= chip_class_for(:disputed) %>">Disputed <strong><%= format_cents(@stats[:disputed], @stats[:currency]) %></strong></span>
-  <span class="<%= chip_class_for(:net) %>">Net <strong><%= format_cents(@stats[:net], @stats[:currency]) %></strong></span>
-  <span class="muted">(<%= @stats[:count] %> shown)</span>
+      <div class="col-12 col-md-3 d-flex gap-2">
+        <button type="submit" class="btn btn-primary flex-shrink-0">Filter</button>
+        <%= link_to "Export visible (CSV)",
+                    export_transactions_path(request.query_parameters),
+                    data: { turbo: false },
+                    class: "btn btn-outline-secondary" %>
+      </div>
+    </form>
+  </div>
 </div>
 
-<div class="grid" style="grid-template-columns: 1fr 2fr; gap: 1rem;">
-  <ul id="tx_index_list" class="tx-list">
-    <%= render partial: "transactions/summary_row",
-               collection: @rows, as: :t %>
-  </ul>
+<div class="d-flex flex-wrap gap-2 align-items-center mb-3 small">
+  <span class="badge text-bg-secondary">Gross <strong>$<%= sprintf('%.2f', @stats[:gross] / 100.0) %></strong></span>
+  <span class="badge text-bg-info">Refunds <strong>$<%= sprintf('%.2f', @stats[:refunds] / 100.0) %></strong></span>
+  <span class="badge text-bg-warning">Disputed <strong>$<%= sprintf('%.2f', @stats[:disputed] / 100.0) %></strong></span>
+  <span class="badge text-bg-success">Net <strong>$<%= sprintf('%.2f', @stats[:net] / 100.0) %></strong></span>
+  <span class="text-muted">(<%= @stats[:count] %> shown)</span>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-5">
+    <div class="card">
+      <ul id="tx_index_list" class="list-group list-group-flush">
+        <%= render partial: "transactions/summary_row",
+                   collection: @rows, as: :t %>
+      </ul>
+    </div>
+  </div>
+
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-body">
+        <%= turbo_frame_tag "details" do %>
+          <em class="text-muted">Select a transaction to view its timeline…</em>
+        <% end %>
+      </div>
+    </div>
+  </div>
 </div>

@@ -15,4 +15,20 @@ module ApplicationHelper
     else "chip"
     end
   end
+
+  def status_chip(status, bootstrap: true)
+    s = status.to_s
+    label = s.tr("_", " ")
+
+    klass =
+      case s
+      when "succeeded"               then "badge rounded-pill text-bg-success"
+      when "refunded"                then "badge rounded-pill text-bg-info"
+      when "disputed"                then "badge rounded-pill text-bg-warning"
+      when "requires_payment_method" then "badge rounded-pill text-bg-secondary"
+      else                                 "badge rounded-pill text-bg-secondary"
+      end
+
+    content_tag(:span, label, class: klass)
+  end
 end

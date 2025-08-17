@@ -1,12 +1,7 @@
-<%# This partial now expects locals: events:, key: (and optional verbose:) %>
 <% events  = Array(local_assigns[:events]) %>
 <% verbose = !!local_assigns[:verbose] %>
-
-<%# Hide noisy updates unless verbose %>
 <% filtered = verbose ? events : events.reject { |e| e.type_name.end_with?(".updated") } %>
 
-
-<%# 2) Grouping (keep your existing groups, just use 'filtered' instead of 'events') %>
 <% groups = filtered.group_by do |e|
   tn = e.type_name
   case
@@ -21,47 +16,58 @@
 end %>
 
 <% timings = TransactionTimings.new(filtered) %>
-<div style="display:flex; gap:.5rem; margin:.25rem 0;">
-  <span class="chip muted">PI → Charge: <strong><%= timings.human(timings.pi_to_charge_ms) %></strong></span>
-  <span class="chip refund">Charge → Refund: <strong><%= timings.human(timings.charge_to_refund_ms) %></strong></span>
-  <span class="chip warning">Dispute → Closed: <strong><%= timings.human(timings.dispute_to_close_ms) %></strong></span>
+<div class="d-flex flex-wrap gap-2 mb-3">
+  <span class="badge rounded-pill text-bg-secondary">PI → Charge: <strong><%= timings.human(timings.pi_to_charge_ms) %></strong></span>
+  <span class="badge rounded-pill text-bg-info">Charge → Refund: <strong><%= timings.human(timings.charge_to_refund_ms) %></strong></span>
+  <span class="badge rounded-pill text-bg-warning">Dispute → Closed: <strong><%= timings.human(timings.dispute_to_close_ms) %></strong></span>
 </div>
 
-
 <% groups.each do |group_name, group_events| %>
-  <h3><%= group_name %> (<%= group_events.size %>)</h3>
-  <ul>
+  <h6 class="text-uppercase text-muted mt-4 mb-2"><%= group_name %> (<%= group_events.size %>)</h6>
+
+  <div class="timeline list-group list-group-flush">
     <% group_events.each do |e| %>
       <% o = e.payload["data"]["object"] || {} %>
-      <li>
-        <code><%= Time.at(e.created_at_unix) %></code> — <%= e.type_name %>
 
-        <%# BASIC success/refund chips %>
-        <% if e.type_name == "payment_intent.succeeded" || e.type_name == "charge.succeeded" %>
-          — <span class="chip success">succeeded</span>
-        <% elsif e.type_name.start_with?("refund.") || e.type_name == "charge.refunded" %>
-          — <span class="chip refund">refund</span>
-        <% end %>
+      <div class="list-group-item timeline-item">
+        <div class="d-flex justify-content-between align-items-center">
+          <code class="small text-muted"><%= Time.at(e.created_at_unix) %></code>
 
-        <%# your existing amount label %>
-        <% if (lbl = event_amount_label(e)).present? %>
-          — <em><%= lbl %></em>
-        <% end %>
+          <%# status-ish chips for quick scan %>
+          <% if e.type_name == "payment_intent.succeeded" || e.type_name == "charge.succeeded" %>
+            <span class="badge rounded-pill text-bg-success">succeeded</span>
+          <% elsif e.type_name.start_with?("refund.") || e.type_name == "charge.refunded" %>
+            <span class="badge rounded-pill text-bg-info">refund</span>
+          <% elsif e.type_name.start_with?("charge.dispute.") %>
+            <span class="badge rounded-pill text-bg-warning">dispute</span>
+          <% end %>
+        </div>
 
-        <%# dispute due date chip you added earlier %>
-        <% o = e.payload["data"]["object"] || {} %>
-        <% if o["object"] == "dispute" && (due = o.dig("evidence_details","due_by")) %>
-          — <span class="chip warning">evidence due <%= time_ago_in_words(Time.at(due)) %> from now</span>
-        <% end %>
+        <div class="mt-1">
+          <span class="mono"><%= e.type_name %></span>
 
-        <%# optional dashboard link %>
-        <% if (dash_id = primary_dashboard_id_for_event(e)).present? %>
-          — <%= link_to "dashboard", stripe_url_for(dash_id, livemode: e.livemode), target: "_blank", rel: "noopener" %>
-        <% end %>
+          <% if (lbl = event_amount_label(e)).present? %>
+            — <em><%= lbl %></em>
+          <% end %>
 
-        ( <a href="#" onclick='alert(JSON.stringify(<%= raw e.payload.to_json %>, null, 2))'>payload</a> )
-      </li>
+          <% if o["object"] == "dispute" && (due = o.dig("evidence_details","due_by")) %>
+            — <span class="badge text-bg-warning">evidence due <%= time_ago_in_words(Time.at(due)) %> from now</span>
+          <% end %>
+        </div>
 
-  <% end %>
-  </ul>
+        <div class="mt-2 d-flex gap-2">
+          <% if (dash_id = primary_dashboard_id_for_event(e)).present? %>
+            <%= link_to "dashboard",
+                        stripe_url_for(dash_id, livemode: e.livemode),
+                        target: "_blank", rel: "noopener",
+                        class: "btn btn-sm btn-outline-secondary" %>
+          <% end %>
+          <button type="button" class="btn btn-sm btn-outline-secondary"
+                  onclick='alert(JSON.stringify(<%= raw e.payload.to_json %>, null, 2))'>
+            payload
+          </button>
+        </div>
+      </div>
+    <% end %>
+  </div>
 <% end %>
